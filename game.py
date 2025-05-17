@@ -8,20 +8,15 @@ import sys
 import os
 from typing import List, Tuple, Optional
 
-# Убедимся, что пути к текстурам корректны
 def get_texture_path(filename):
-    """Пытается найти текстуру в разных местах"""
-    # Проверяем рядом с программой
     if os.path.exists(filename):
         return filename
-    # Проверяем в подпапке textures
     texture_path = os.path.join("textures", filename)
     if os.path.exists(texture_path):
         return texture_path
     return None
 
 def load_texture(image_path: str) -> Optional[int]:
-    """Загрузка текстуры из файла с обработкой ошибок"""
     try:
         texture_surface = pygame.image.load(image_path)
         texture_data = pygame.image.tostring(texture_surface, "RGBA", 1)
@@ -114,7 +109,6 @@ class CelestialBody:
             gluQuadricTexture(quad, GL_TRUE)
             gluQuadricNormals(quad, GLU_SMOOTH)
             
-            # Увеличиваем яркость за счет материала
             glMaterialfv(GL_FRONT, GL_AMBIENT, [0.5 * self.light_power, 0.5 * self.light_power, 0.5 * self.light_power, 1.0])
             glMaterialfv(GL_FRONT, GL_DIFFUSE, [1.0 * self.light_power, 1.0 * self.light_power, 1.0 * self.light_power, 1.0])
             glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0 * self.light_power, 1.0 * self.light_power, 1.0 * self.light_power, 1.0])
@@ -220,7 +214,6 @@ class SolarSystemScreensaver:
             gluPerspective(45, (self.display[0]/self.display[1]), 0.1, 100.0)
             glTranslatef(0.0, 0.0, -20)
             
-            # Настройка освещения
             glEnable(GL_LIGHTING)
             glEnable(GL_LIGHT0)
             glLightfv(GL_LIGHT0, GL_POSITION, [10, 10, 10, 1])
@@ -232,21 +225,18 @@ class SolarSystemScreensaver:
             glEnable(GL_BLEND)
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             
-            # Инициализация объектов
             self.starfield = Starfield()
 
-            # Солнце с повышенной яркостью и вращением
             self.sun = CelestialBody(
                 radius=1.5,
-                color=(1.0, 0.8, 0.4),  # Более теплый цвет
+                color=(1.0, 0.8, 0.4), 
                 orbit_radius=0.0,
-                speed=0.0,  # Солнце не движется по орбите
+                speed=0.0, 
                 texture_file="sun.jpg",
-                rotation_speed=0.5,  # Вращение вокруг своей оси
-                light_power=2.0  # Увеличенная яркость
+                rotation_speed=0.5, 
+                light_power=2.0 
             )
             
-            # Земля с повышенной яркостью
             self.earth = Moon(
                 planet=self.sun,
                 radius=0.8,
@@ -255,10 +245,9 @@ class SolarSystemScreensaver:
                 speed=0.15,
                 texture_file="earth_texture.jpg",
                 rotation_speed=0.7,
-                light_power=1.5  # Увеличенная яркость
+                light_power=1.5  
             )
             
-            # Луна с повышенной яркостью
             self.moon = Moon(
                 planet=self.earth,
                 radius=0.4,
@@ -267,7 +256,7 @@ class SolarSystemScreensaver:
                 speed=0.5,
                 texture_file="moon_texture.jpg",
                 rotation_speed=0.3,
-                light_power=1.3  # Увеличенная яркость
+                light_power=1.3  
             )
             
         except Exception as e:
@@ -276,7 +265,6 @@ class SolarSystemScreensaver:
             sys.exit(1)
     
     def cleanup(self):
-        """Очистка ресурсов"""
         pygame.quit()
     
     def handle_events(self):
@@ -291,7 +279,7 @@ class SolarSystemScreensaver:
     
     def update(self):
         self.starfield.update()
-        self.sun.update_position()  # Солнце будет только вращаться
+        self.sun.update_position()  
         self.earth.update_position()
         self.moon.update_position()
     
@@ -317,8 +305,5 @@ class SolarSystemScreensaver:
             self.cleanup()
 
 if __name__ == "__main__":
-    print("Запуск скринсейвера Солнечной системы")
-    print("Управление: ESC или клик мышью для выхода")
-    
     screensaver = SolarSystemScreensaver()
     screensaver.run()
