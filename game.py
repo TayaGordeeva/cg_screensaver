@@ -8,6 +8,8 @@ import sys
 import os
 from typing import List, Tuple, Optional
 
+pygame.font.init()
+
 def get_texture_path(filename):
     if os.path.exists(filename):
         return filename
@@ -39,9 +41,9 @@ def load_texture(image_path: str) -> Optional[int]:
 class Star:
     def __init__(self):
         self.position = [
+            random.uniform(-50, 50),
             random.uniform(-30, 30),
-            random.uniform(-20, 20),
-            random.uniform(-25, 0)
+            random.uniform(-50, 0)
         ]
         self.base_intensity = random.uniform(0.3, 0.7)
         self.current_intensity = self.base_intensity
@@ -57,14 +59,14 @@ class CelestialBody:
     def __init__(self, radius: float, color: Tuple[float, float, float], 
                  orbit_radius: float, speed: float, texture_file: Optional[str] = None,
                  rotation_speed: float = 1.0, light_power: float = 1.0):
-        self.radius = radius * 1.5
+        self.radius = radius
         self.color = color
-        self.orbit_radius = orbit_radius * 2
+        self.orbit_radius = orbit_radius
         self.speed = speed
         self.angle = random.uniform(0, 360)
         self.rotation_angle = 0
         self.rotation_speed = rotation_speed
-        self.light_power = light_power  # Множитель яркости (1.0 - нормальная, >1.0 - ярче)
+        self.light_power = light_power
         self.position = [0.0, 0.0, 0.0]
         self.texture_id = None
         
@@ -72,26 +74,20 @@ class CelestialBody:
             texture_path = get_texture_path(texture_file)
             if texture_path:
                 self.texture_id = load_texture(texture_path)
-                if self.texture_id:
-                    print(f"Успешно загружена текстура: {texture_file}")
-                else:
-                    print(f"Не удалось загрузить текстуру: {texture_file}")
-            else:
-                print(f"Файл текстуры не найден: {texture_file}")
         
     def update_position(self):
         self.angle += self.speed
         self.rotation_angle += self.rotation_speed
         self.position = [
             math.sin(math.radians(self.angle)) * self.orbit_radius,
-            math.cos(math.radians(self.angle)) * self.orbit_radius * 0.5,
+            math.cos(math.radians(self.angle)) * self.orbit_radius * 0.3,
             0
         ]
         
     def draw(self):
         glPushMatrix()
         glTranslatef(*self.position)
-        glRotatef(self.rotation_angle, 0, 1, 0)  # Вращение вокруг своей оси
+        glRotatef(self.rotation_angle, 0, 1, 0)
         
         if self.texture_id is not None:
             self._draw_textured()
@@ -157,8 +153,8 @@ class Moon(CelestialBody):
         self.rotation_angle += self.rotation_speed
         self.position = [
             self.planet.position[0] + math.sin(math.radians(self.angle)) * self.orbit_radius,
-            self.planet.position[1] + math.cos(math.radians(self.angle)) * self.orbit_radius * 0.7,
-            self.planet.position[2] + math.sin(math.radians(self.angle * 1.3)) * 0.5
+            self.planet.position[1] + math.cos(math.radians(self.angle)) * self.orbit_radius * 0.5,
+            self.planet.position[2] + math.sin(math.radians(self.angle * 1.3)) * 0.3
         ]
 
 class Starfield:
@@ -193,7 +189,7 @@ class Starfield:
         
         glVertexPointer(3, GL_FLOAT, 0, vertex_ptr)
         glColorPointer(3, GL_FLOAT, 0, color_ptr)
-        glPointSize(1.0)
+        glPointSize(1.5)
         glDrawArrays(GL_POINTS, 0, len(self.stars))
         
         glDisableClientState(GL_VERTEX_ARRAY)
@@ -202,9 +198,67 @@ class Starfield:
         if lighting_enabled:
             glEnable(GL_LIGHTING)
 
+class RainbowText:
+    def __init__(self):
+        self.angle = 0
+        self.text = "Поставьте зачет пожалуйста"
+        self.font = pygame.font.SysFont('Arial', 40, 'bold')
+        self.char_angles = [i * (2*math.pi/3 / (len(self.text)-1)) - math.pi/3 for i in range(len(self.text))]
+        
+    def update(self):
+        self.angle += 0.01
+        if self.angle > 2 * math.pi:
+            self.angle -= 2 * math.pi
+            
+    def draw(self):
+        glDisable(GL_LIGHTING)
+        glPushMatrix()
+        glTranslatef(0, 17, -20) 
+        glRotatef(-30, 1, 0, 0)
+        
+        radius = 30.0 
+        for i, char in enumerate(self.text):
+            hue = (self.angle + i * 0.15) % (2 * math.pi)
+            r = math.sin(hue) * 0.5 + 0.5
+            g = math.sin(hue + 2.1) * 0.5 + 0.5
+            b = math.sin(hue + 4.2) * 0.5 + 0.5
+            
+            char_angle = self.char_angles[i]
+            x = math.sin(char_angle) * radius
+            y = 0 
+            z = math.cos(char_angle) * radius - radius
+            
+            glPushMatrix()
+            glTranslatef(x, y, z)
+            
+            text_surface = self.font.render(char, True, (int(r * 255), int(g * 255), int(b * 255)))
+            text_data = pygame.image.tostring(text_surface, "RGBA", True)
+            
+            glEnable(GL_TEXTURE_2D)
+            tex_id = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, tex_id)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, text_surface.get_width(), text_surface.get_height(),
+                        0, GL_RGBA, GL_UNSIGNED_BYTE, text_data)
+            
+            glBegin(GL_QUADS)
+            glTexCoord2f(0, 0); glVertex3f(-0.6, -0.6, 0)
+            glTexCoord2f(1, 0); glVertex3f(0.6, -0.6, 0)
+            glTexCoord2f(1, 1); glVertex3f(0.6, 0.6, 0)
+            glTexCoord2f(0, 1); glVertex3f(-0.6, 0.6, 0)
+            glEnd()
+            
+            glDeleteTextures([tex_id])
+            glDisable(GL_TEXTURE_2D)
+            glPopMatrix()
+        
+        glPopMatrix()
+        glEnable(GL_LIGHTING)
+
 class SolarSystemScreensaver:
     def __init__(self):
-        self.display = (1000, 750)
+        self.display = (1200, 800)
         self.clock = pygame.time.Clock()
         self.running = False
         
@@ -212,8 +266,9 @@ class SolarSystemScreensaver:
             pygame.init()
             pygame.display.set_mode(self.display, DOUBLEBUF | OPENGL)
             gluPerspective(45, (self.display[0]/self.display[1]), 0.1, 100.0)
-            glTranslatef(0.0, 0.0, -20)
+            glTranslatef(0.0, -2.0, -25)
             
+            # Настройка освещения
             glEnable(GL_LIGHTING)
             glEnable(GL_LIGHT0)
             glLightfv(GL_LIGHT0, GL_POSITION, [10, 10, 10, 1])
@@ -225,38 +280,41 @@ class SolarSystemScreensaver:
             glEnable(GL_BLEND)
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             
-            self.starfield = Starfield()
+            # Инициализация объектов
+            self.starfield = Starfield(1500)
+            self.rainbow_text = RainbowText()
 
+            # Создаем солнечную систему
             self.sun = CelestialBody(
-                radius=1.5,
-                color=(1.0, 0.8, 0.4), 
+                radius=2.0,
+                color=(1.0, 0.8, 0.4),
                 orbit_radius=0.0,
-                speed=0.0, 
-                texture_file="sun.jpg",
-                rotation_speed=0.5, 
-                light_power=2.0 
+                speed=0.0,
+                texture_file="sun2.jpg",
+                rotation_speed=0.3,
+                light_power=2.5
             )
             
             self.earth = Moon(
                 planet=self.sun,
                 radius=0.8,
                 color=(0.1, 0.3, 0.8),
-                orbit_radius=4.0,
-                speed=0.15,
+                orbit_radius=8.0,
+                speed=0.1,
                 texture_file="earth_texture.jpg",
-                rotation_speed=0.7,
-                light_power=1.5  
+                rotation_speed=0.5,
+                light_power=1.3
             )
             
             self.moon = Moon(
                 planet=self.earth,
-                radius=0.4,
+                radius=0.3,
                 color=(0.8, 0.8, 0.8),
-                orbit_radius=1.8,
-                speed=0.5,
+                orbit_radius=2.5,
+                speed=0.3,
                 texture_file="moon_texture.jpg",
-                rotation_speed=0.3,
-                light_power=1.3  
+                rotation_speed=0.7,
+                light_power=1.1
             )
             
         except Exception as e:
@@ -279,17 +337,19 @@ class SolarSystemScreensaver:
     
     def update(self):
         self.starfield.update()
-        self.sun.update_position()  
+        self.sun.update_position()
         self.earth.update_position()
         self.moon.update_position()
+        self.rainbow_text.update()
     
     def render(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
-        self.starfield.draw()        
+        self.starfield.draw()
         self.sun.draw()
         self.earth.draw()
         self.moon.draw()
+        self.rainbow_text.draw()
         
         pygame.display.flip()
         self.clock.tick(60)
